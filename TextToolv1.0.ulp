@@ -41,7 +41,9 @@ int NUM_LAYERS = 8;
 int silk_screen_layers[];
 enum {UNIT_MIL, UNIT_MM};
 int units = UNIT_MIL;
-int normText, spin, handles;
+int normText=1, normSize, normSpin=1, normHandles=1, align=0;
+int verticalPos=0, horizontalPos=0, foo=2;
+string Text_alignments[]={"bottom-left","bottom-center","bottom-right","center-left","center","center-right","top-left","top-center","top-right"};
 
 
 /* ------------- UTILITY FUNCTIONS --------------- */
@@ -81,48 +83,94 @@ int SilkScreenText(int layer) {
 //
 void ResizeText(UL_TEXT T, real size, int ratio) {
     if (SilkScreenText(T.layer)) {
+    
+    if (normText){
         switch (units) {
             case UNIT_MIL:
                 sprintf(str,"CHANGE SIZE %.3f (%.3f %.3f);\nCHANGE RATIO %d (%.3f %.3f);\n",
                         size, u2mil(T.x), u2mil(T.y), ratio, u2mil(T.x), u2mil(T.y));
                 break;
+                
             case UNIT_MM:
+            
                 sprintf(str,"CHANGE SIZE %.3f (%.3f %.3f);\nCHANGE RATIO %d (%.3f %.3f);\n",
                         size, u2mm(T.x), u2mm(T.y), ratio, u2mm(T.x), u2mm(T.y));
+                       
                 break;
         }
-        cmd += str;
         
-        if (spin){
+        cmd += str;
+        }
+        
+        if (normSpin){   // sets spin on all texts - still broken at the moment
         
         switch (units) {
             case UNIT_MIL:
-                sprintf(str,"CHANGE SIZE %.3f (%.3f %.3f);\nCHANGE RATIO %d (%.3f %.3f);\n",
-                        size, u2mil(T.x), u2mil(T.y), ratio, u2mil(T.x), u2mil(T.y));
-                        
-                            sprintf(str, "ROTATE SR0 (%.4f %.4f);\n",
+                
+                   sprintf(str, "ROTATE SR0 (%.4f %.4f);\n",
                    u2mil(T.x), u2mil(T.y) );
-                   
-                   
-                        
+                     
                 break;
             case UNIT_MM:
-                sprintf(str,"CHANGE SIZE %.3f (%.3f %.3f);\nCHANGE RATIO %d (%.3f %.3f);\n",
-                        size, u2mm(T.x), u2mm(T.y), ratio, u2mm(T.x), u2mm(T.y));
-                        
-                     sprintf(str, "ROTATE SR180 (%.4f %.4f);\n",
+                   sprintf(str, "ROTATE SR0 (%.4f %.4f);\n",
                    u2mm(T.x), u2mm(T.y) );
                         
                 break;
-        }
-        
+        }        
         cmd += str;
-        }
+    }
     
-        
-     }
-        
+    if (normHandles){
+    
+        /* ALIGN_BOTTOM_LEFT bottom/left aligned
+		ALIGN_BOTTOM_CENTER bottom/centeraligned
+		ALIGN_BOTTOM_RIGHT bottom/right aligned
+		ALIGN_CENTER_LEFT center/left aligned
+		ALIGN_CENTER centered
+		ALIGN_CENTER_RIGHT center/right aligned
+		ALIGN_TOP_LEFT top/left aligned
+		ALIGN_TOP_CENTER top/center aligned
+		ALIGN_TOP_RIGHT top/right aligned */                      
+ 
+   align = (3 * verticalPos) + horizontalPos;
+   
+ 
+   switch (units) {  
+       case UNIT_MIL:
+       
+              sprintf(str, "ROTATE =SR0 (%.4f %.4f);\n",
+                  u2mil(T.x), u2mil(T.y) );  
+                  
+      cmd += str; 
+       
+       sprintf(str, "Change align %s (%.4f %.4f);\n", 
+       Text_alignments[align],  u2mil(T.x), u2mil(T.y) ); 
+       
+       
+       
+         cmd += str; 
+  
+
+      break;
+                
+                
+    case UNIT_MM:
+       sprintf(str,"CHANGE ALIGN %d (%.3f %.3f);\n",
+       align, u2mm(T.x), u2mm(T.y)); 
+       
+       cmd += str; 
+       
+       sprintf(str, "ROTATE =SR0 (%.4f %.4f);\n",
+                  u2mm(T.x), u2mm(T.y) );  
+                  
+       cmd += str; 
+           
+       break;
+      }    
+    }  
+  }
 }
+
 
 
 //
@@ -254,17 +302,16 @@ if (board) {
         dlgLabel(str);
 
         // Options
-        dlgHBoxLayout {
-            dlgGroup("Output units") {
+        dlgGridLayout {
+         
+        dlgCell(0,0) dlgCheckBox("&Normalize Text", normText); 
+        
+            dlgCell(0,1) dlgGroup("Output units") {
                 dlgRadioButton("m&il",units){text_size = text_size /.0254; text_thickness = text_thickness / .0254; dlgRedisplay(); }
                 dlgRadioButton("&mm",units){text_size = text_size *.0254; text_thickness = text_thickness * .0254; dlgRedisplay(); }
             }
-            dlgSpacing(1);
-            dlgGridLayout {
-            
-               dlgCell(0,0)dlgCheckBox("&Normalize Text Size", normText); 
-            
-             dlgCell(1,0) dlgLabel("Text size:");
+           
+                dlgCell(1,0) dlgLabel("Text size:");
                 dlgCell(1,1) dlgRealEdit(text_size,0.5,2000.0);
 
                 dlgCell(2,0) dlgLabel("Text Thickness:");
@@ -273,21 +320,8 @@ if (board) {
                 dlgCell(3,0) dlgLabel("<font size=-1>Layers to Change:<br />sep. by spaces</font>");
                 dlgCell(3,1) dlgStringEdit(layerText);
                 
-                dlgCell(4,0) dlgSpacing(7);
-                 dlgCell(5,0)  dlgCheckBox("&Spin All Text", spin);
-                  dlgCell(6,0) dlgCheckBox("&Fix Text Handle", handles); 
-                             
-                int HandlePos = 0;
-                dlgCell(6,1) dlgGroup("Handle Position") {
-                dlgRadioButton("&Bottom Left", HandlePos);
-                dlgRadioButton("&Top Right", HandlePos);
-                } 
-              
-            }
-        }
-
-         dlgVBoxLayout {
-            dlgStretch(0);
+                   dlgCell(4,0)  dlgVBoxLayout {
+            
             dlgLabel("<font size=-1>Layer Reference:<br /> \
             1   Top<br /> \
             16   Bottom<br /> \
@@ -304,6 +338,29 @@ if (board) {
             121  _tSilk<br /> \
             122  _bSilk<br /> \
             </font>"); }
+               
+                
+                   dlgCell(5,0) dlgSpacing(50);
+                dlgCell(5,0)  dlgCheckBox("&Spin All Text", normSpin);
+            
+                dlgCell(6,0) dlgCheckBox("&Fix Handle and Rot.", normHandles); 
+                   
+                dlgCell(7,0) dlgGroup("Handle Ver. Position") {
+                 dlgRadioButton("&Top", foo){ verticalPos=2 ;}
+                dlgRadioButton("&Center", foo){ verticalPos=1 ;}
+                dlgRadioButton("&Bottom", foo){ verticalPos=0 ;}
+                }               
+                dlgCell(7,1)dlgHBoxLayout{dlgGroup("Handle Hor. Position"){
+                dlgRadioButton("&Left", horizontalPos);
+                dlgRadioButton("&Center", horizontalPos);
+                dlgRadioButton("&Rigbt", horizontalPos);
+                  } 
+                 }
+                
+             
+    }
+       
+     
             
              // Buttons
             dlgHBoxLayout {
@@ -315,6 +372,8 @@ if (board) {
         }
     };
 
+
+    
     if (!result) exit(0);
     
 if (result == 1){  // dialog exited with "OK"
